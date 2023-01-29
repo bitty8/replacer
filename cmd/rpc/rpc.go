@@ -45,13 +45,15 @@ func main() {
 	var (
 		input      string
 		outDir     string
+		outName    string
 		force      bool
 		paramsfile string
 		params     string
 	)
 
 	flag.StringVar(&input, "input", "", "the list of input stub files separated by ,")
-	flag.StringVar(&outDir, "outdir", "", "build directory")
+	flag.StringVar(&outDir, "outdir", "", "base build directory")
+	flag.StringVar(&outName, "outname", "", "name of out file (if input has one in file)")
 	flag.BoolVar(&force, "force", false, "replace with an empty value if the key is not found either abort process")
 	flag.StringVar(&paramsfile, "mapfile", "", "file than contains a map of values (only json)")
 	flag.StringVar(&params, "params", "", "list of params in key=vale view separated by , (lame=x,fname=y)")
@@ -78,23 +80,32 @@ func main() {
 		}
 
 		outDir += "/" + strconv.Itoa(int(time.Now().Unix())) + "_build"
-		fmt.Println(outDir)
+	}
+
+	fmt.Fprintf(os.Stderr, "base build path is %s\n", outDir)
+
+	inputFiles := parseInput([]byte(input))
+
+	if len(inputFiles) > 1 && len(outName) > 0 {
+		fmt.Fprintln(os.Stderr)
+		os.Exit(3)
 	}
 
 	rpl, err := replacer.NewReplacer(
-		parseInput([]byte(input)),
+		inputFiles,
 		outDir,
 		force,
 		paramsfile,
 		params,
+		outName,
 	)
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(3)
+		os.Exit(4)
 	}
 
 	if !rpl.Exec() {
-		os.Exit(4)
+		os.Exit(5)
 	}
 }

@@ -13,13 +13,18 @@ import (
 type Replacer struct {
 	templatesPaths []string
 	outDir         string
+	outName        string
 	isForce        bool
 	gm             *gmap
 	wg             *sync.WaitGroup
 	hasErrFlag     int32
 }
 
-func NewReplacer(inPaths []string, outDir string, force bool, paramsFile string, params string) (*Replacer, error) {
+func NewReplacer(inPaths []string, outDir string, force bool, paramsFile string, params string, outName string) (*Replacer, error) {
+	if len(inPaths) > 1 && len(outName) > 0 {
+		return nil, fmt.Errorf("the flag \"outname\" is applied if the number of input files is equal to one")
+	}
+
 	inFilesPaths, err := getAllTemplates(inPaths)
 
 	if err != nil {
@@ -41,6 +46,7 @@ func NewReplacer(inPaths []string, outDir string, force bool, paramsFile string,
 	return &Replacer{
 		templatesPaths: inFilesPaths,
 		outDir:         outDir,
+		outName:        outName,
 		isForce:        force,
 		gm:             gm,
 		wg:             &sync.WaitGroup{},
@@ -137,9 +143,14 @@ func (r *Replacer) runTask(inFile string) {
 
 	defer r.wg.Done()
 
-	// make out file path
-	outPath := path.Join(r.outDir, cutStubExt(inFile))
+	outPath := ""
 
+	if len(r.outName) > 0 {
+		outPath = path.Join(r.outDir, r.outName)
+	} else {
+		outPath = path.Join(r.outDir, cutStubExt(inFile))
+	}
+	// make out file path
 	os.Remove(outPath)
 
 	// create out file path
@@ -171,7 +182,7 @@ func (r *Replacer) runTask(inFile string) {
 		return
 	}
 
-	fmt.Fprintf(os.Stdout, "file %s replaced successfuly\n", inFile)
+	fmt.Fprintf(os.Stdout, "file %s replaced successfuly to %s\n", inFile, outPath)
 }
 
 func (r *Replacer) Exec() bool {
@@ -193,6 +204,5 @@ func (r *Replacer) Exec() bool {
 		return false
 	}
 
-	fmt.Fprintf(os.Stdout, "out dir is %s\n", r.outDir)
 	return true
 }
